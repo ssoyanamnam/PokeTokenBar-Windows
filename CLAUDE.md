@@ -156,3 +156,12 @@
   진짜 활성화 포커스를 뺏어오는 건 UIPI 특성상 불가능 — 표시 유지가 현실적 최선. (2026-07-28, 코드
   수정 완료·XCTest 로는 재현 불가 — 실제 Win32 메시지 루프+elevated 창 조합이 필요해 회귀 테스트는
   생략하고 이 항목으로만 캡처.)
+- **WinSDK C 구조체를 stored static(전역)으로 두지 마라 — 힙 포인터 + addressor 로(Windows).** Swift-for-Windows
+  툴체인이 `static var nid = NOTIFYICONDATAW()` 에 구조체 크기(976B)보다 작은 968B 전역 슬롯만 잡아, 마지막 필드
+  `hBalloonIcon` 이 바로 다음 전역 `popupHwnd` 와 겹쳤다. `notify()` 가 토스트(부화/진화/한도/업데이트)마다
+  `hBalloonIcon = nil` 로 되돌리며 `popupHwnd` 를 nil 로 덮어써 → 트레이 클릭·바깥 클릭 닫기·WM_CLOSE 가 전부
+  조용히 no-op(아이콘 애니·갱신은 정상이라 "앱은 살아있는데 클릭만 안 먹음", 재시작해야 복구). 진단: `llvm-nm -n`
+  으로 전역 심볼 간격 확인 + `ReadProcessMemory` 로 라이브 `popupHwnd`=0 실측(2026-10-28). 수정: `nidStorage`
+  힙 블록 + `unsafeAddress/unsafeMutableAddress` (호출부 `&nid`·`nid.x =` 그대로). 회귀 가드:
+  `WindowsPortTests.testNotifyIconDataDoesNotAliasPopupHwnd`. 새 Win32 구조체 상태를 전역에 둘 땐 같은 패턴을 쓰고,
+  `llvm-nm -n <exe> | grep WindowsTrayO` 로 다음 심볼까지 간격 ≥ `MemoryLayout<T>.size` 인지 확인.

@@ -12,6 +12,25 @@ final class WindowsPortTests: XCTestCase {
         XCTAssertEqual(rgb(0, 0, 255), COLORREF(0x00FF_0000))   // blue → high byte
     }
 
+    /// Regression: writing the tray NOTIFYICONDATAW's last field (`hBalloonIcon`, set/cleared by every
+    /// toast) must not touch neighbouring globals. It used to alias `popupHwnd`, so the first hatch/evolve
+    /// toast nil'd the popup handle and the tray icon stopped opening the popover until restart.
+    func testNotifyIconDataDoesNotAliasPopupHwnd() {
+        let savedPopup = WindowsTray.popupHwnd, savedSink = WindowsTray.sinkHwnd
+        defer { WindowsTray.popupHwnd = savedPopup; WindowsTray.sinkHwnd = savedSink; WindowsTray.nid.hBalloonIcon = nil }
+        let sentinel = HWND(bitPattern: 0x1234_5678)
+        WindowsTray.popupHwnd = sentinel
+        WindowsTray.sinkHwnd = sentinel
+        WindowsTray.nid.hBalloonIcon = HICON(bitPattern: 0xBEEF)   // what notify() does
+        WindowsTray.nid.hBalloonIcon = nil
+        withUnsafeMutablePointer(to: &WindowsTray.nid) { p in      // whole-struct writes (e.g. Shell_NotifyIconW)
+            UnsafeMutableRawPointer(p).initializeMemory(as: UInt8.self, repeating: 0,
+                                                        count: MemoryLayout<NOTIFYICONDATAW>.size)
+        }
+        XCTAssertEqual(WindowsTray.popupHwnd, sentinel)
+        XCTAssertEqual(WindowsTray.sinkHwnd, sentinel)
+    }
+
     /// `String.wide` yields a NUL-terminated UTF-16 buffer for Win32 wide-string APIs.
     func testWideIsNulTerminatedUTF16() {
         XCTAssertEqual("Hi".wide, [72, 105, 0])

@@ -32,6 +32,7 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName=PokeTokenBar
 UninstallDisplayIcon={app}\PokeTokenBar.exe
+SetupIconFile=..\assets\windows\PokeTokenBar.ico
 ; Detect / close a running instance (matches the app's single-instance mutex) so files can be replaced.
 AppMutex=Local\PokeTokenBar-SingleInstance
 CloseApplications=yes

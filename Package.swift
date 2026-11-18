@@ -22,6 +22,10 @@ let package = Package(
                 // CLI modes re-attach a console at runtime (see WindowsMain.ensureConsole()).
                 .unsafeFlags(["-Xlinker", "/SUBSYSTEM:WINDOWS", "-Xlinker", "/ENTRY:mainCRTStartup"],
                              .when(platforms: [.windows])),
+                // Embed the app icon (assets/windows/PokeTokenBar.rc → .res) so Explorer, the Start
+                // menu, shortcuts and Add/Remove Programs show it. lld-link takes .res files as inputs.
+                .unsafeFlags(["-Xlinker", Context.packageDirectory + "/assets/windows/PokeTokenBar.res"],
+                             .when(platforms: [.windows])),
             ]
         ),
         // Vendored public-domain SQLite amalgamation, compiled only where it's actually depended on

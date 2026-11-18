@@ -25,7 +25,20 @@ enum WindowsTray {
 
     nonisolated(unsafe) static var sinkHwnd: HWND?
     nonisolated(unsafe) static var popupHwnd: HWND?
-    nonisolated(unsafe) static var nid = NOTIFYICONDATAW()
+    // NOTIFYICONDATAW lives on the heap, NOT in a stored static: the Swift-for-Windows toolchain reserved
+    // only 968 bytes of global storage for the 976-byte struct, so its last field `hBalloonIcon` aliased
+    // the next global, `popupHwnd`. notify() clears hBalloonIcon after every toast (hatch/evolve) → that
+    // nil'd popupHwnd → tray clicks, click-away and close all silently no-op'd until a restart.
+    // The addressors keep `&nid` / `nid.field = …` call sites writing in place to the heap block.
+    nonisolated(unsafe) private static let nidStorage: UnsafeMutablePointer<NOTIFYICONDATAW> = {
+        let p = UnsafeMutablePointer<NOTIFYICONDATAW>.allocate(capacity: 1)
+        p.initialize(to: NOTIFYICONDATAW())
+        return p
+    }()
+    static var nid: NOTIFYICONDATAW {
+        unsafeAddress { UnsafePointer(nidStorage) }
+        unsafeMutableAddress { nidStorage }
+    }
     nonisolated(unsafe) private static var companion: CompanionStore?
 
     private static let popupWidth: Int32 = 384
