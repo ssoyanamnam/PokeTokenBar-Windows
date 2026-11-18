@@ -15,7 +15,7 @@ import WinSDK
 enum WindowsUpdate {
     /// Baked build version (Windows has no Info.plist bundle to read `CFBundleShortVersionString`).
     /// Compared against the latest release tag; bump it alongside each Windows release.
-    static let currentVersion = "1.0.3"
+    static let currentVersion = "1.0.4"
     static let repo = "ssoyanamnam/PokeTokenBar-Windows"
 
     struct Available: Sendable, Equatable { let version: String; let url: String }
